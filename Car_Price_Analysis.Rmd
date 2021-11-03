@@ -1,0 +1,347 @@
+---
+output: pdf_document
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{lastpage}
+- \usepackage{amsmath}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\fancyfoot[C]{\thepage\ of \pageref{LastPage}}
+
+\newpage
+\begin{titlepage}
+\begin{center}
+\vspace*{1cm}
+\large{STAT 6450}\\
+\vspace*{2cm}
+\line(1,0){400}\\
+\huge{\textbf{Applied Regression Analysis}}\\
+\vspace*{1cm}
+\textbf
+{Group Project: Car Price Prediction}\\
+
+\vspace*{1cm}
+\text
+{Raj Roy}\\
+\text
+{Shehan Perera}\\
+\text
+{Diego Ribeiro de Oliveira Galdino}\\
+\text
+{Shahrzad Charmchi Toosi}\\
+
+\line(1,0){400}
+\vfill
+Spring 2020\\
+Friday, April 24
+\end{center}
+\end{titlepage}
+
+\newpage
+\pagestyle{fancy}
+\fancyhead[L]{\slshape Car Price Prediction}
+\fancyhead[C]{\slshape STAT 6450}
+\fancyhead[R]{\slshape Group Project}
+\section{Preprocessing}
+
+
+```{r}
+setwd("C:/Users/charm/OneDrive/Desktop/Statistics/project")
+Car.price <- read.csv("C:/Users/charm/OneDrive/Desktop/Statistics/project/CarPrice_Assignment.csv",
+                      header = TRUE)
+```
+\section{Preprocessing}
+```{r}
+Car.price$symboling <- as.factor(Car.price$symboling)
+levels(Car.price$symboling) <- c("-3", "-2", "-1", "0", "1", "2", "3")
+
+Car.price$fueltype <- as.factor(Car.price$fueltype)
+levels(Car.price$fueltype) <- c("gas", "diesel")
+
+Car.price$CarCompany <- as.factor(Car.price$CarCompany)
+levels(Car.price$CarCompany) <-
+  c("	AlfaRomero", "Audi", "BMW", "Chevrolet", "Dodge",
+    "Honda","Isuzu","Jaguar", "Mazda", "Buick", "Ford", "Mitsubishi","Nissan", "Peugeot",
+    "Plymouth", "Porsche", "Renault",
+    "Saab","Subaru", "Toyota","Volkswagen", "Volvo")
+
+Car.price$aspiration <- as.factor(Car.price$aspiration)
+levels(Car.price$aspiration) <- c("std", "turbo")
+
+Car.price$doornumber <- as.factor(Car.price$doornumber)
+levels(Car.price$doornumber) <- c("two", "four")
+
+Car.price$carbody <- as.factor(Car.price$carbody)
+levels(Car.price$carbody) <- c("convertible", "hardtop", "hatchback", "sedan", "wagon")
+
+Car.price$drivewheel <- as.factor(Car.price$drivewheel)
+levels(Car.price$drivewheel) <- c("4dw", "fwd", "rwd")
+
+Car.price$enginelocation <- as.factor(Car.price$enginelocation)
+levels(Car.price$enginelocation) <- c("front", "rear")
+
+Car.price$enginetype <- as.factor(Car.price$enginetype)
+levels(Car.price$enginetype) <- c("dohc", "dohcv", "l","ohc", "ohcf", "ohcv", "rotor")
+
+Car.price$cylindernumber <- as.factor(Car.price$cylindernumber)
+levels(Car.price$cylindernumber) <- c("two", "three", "four","five", "six", "eight",
+                                      "twelve")
+
+Car.price$fuelsystem <- as.factor(Car.price$fuelsystem)
+levels(Car.price$fuelsystem) <- c("1bbl", "2bbl", "4bbl", "idi", "mfi",
+                                  "mpfi", "spdi", "spfi")
+```
+\section{Look at the response variable}
+```{r}
+# Need to take the log of the response variable
+#Using fit0 and fit3_u4 for the purpose of PRESS calculation
+#Change to log(price)
+lg_price<-log(Car.price$price)
+hist(lg_price, breaks = 50, xlab = "Car Price")
+library(car)
+library(MASS)
+library(leaps)
+library(ggplot2)
+library(MPV)
+fit0 <-lm(lg_price ~ 1, data = Car.price)
+fit1_old<-lm(price ~ symboling + CarCompany + fueltype + 
+aspiration+ doornumber + carbody + drivewheel+ enginelocation + wheelbase + carlength + carwidth 
++ carheight + curbweight  + enginesize + boreratio + stroke + compressionratio + horsepower 
++ peakrpm + citympg  + highwaympg, data=Car.price) 
+summary(fit1_old)
+```
+from the scatter plots,it seemed like there is no quadratic or cubic relation with
+any of the predictor and some variables did not show any trend at all.
+So starting with the variables that are linearly independent in fit3
+
+```{r}
+fit3 <-lm(lg_price ~ symboling + CarCompany + fueltype + aspiration+ carbody
+          + drivewheel+ enginelocation + wheelbase + carlength + carwidth + carheight
+          + curbweight + enginesize
+          + boreratio + horsepower + citympg 
+          + highwaympg,data = Car.price)
+summary(fit3)
+```
+\section{Checking for multicollinearity}
+```{r}
+# Check the multicollinearity (i.e., calculting Vif)
+vif(fit3)
+#we do not want variables with Vif > 10, so discarded the max one (GVIF) and tried again and again until all variables get vif values < 10!
+fit3_u<-lm(lg_price ~ symboling + fueltype + aspiration+ carbody
+           + drivewheel+ enginelocation + wheelbase + carlength + carwidth
+           + curbweight + enginesize
+           + boreratio + horsepower + citympg 
+           + highwaympg,data = Car.price)
+
+summary(fit3_u)
+vif(fit3_u)
+fit3_u2<-lm(lg_price ~ symboling + fueltype + aspiration+ carbody
+            + drivewheel+ enginelocation + wheelbase + carlength + carwidth
+            + curbweight + enginesize
+            + boreratio + horsepower 
+            + highwaympg,data = Car.price)
+
+vif(fit3_u2)
+fit3_u3<-lm(lg_price ~ symboling + fueltype + aspiration+ carbody
+            + drivewheel+ enginelocation + wheelbase + carlength + carwidth
+            + enginesize
+            + boreratio + horsepower 
+            + highwaympg,data = Car.price)
+vif(fit3_u3)
+summary(fit3_u3)
+fit3_u4<-lm(lg_price ~ symboling + fueltype + aspiration+ carbody
+            + drivewheel+ enginelocation  + carlength + carwidth
+            + enginesize
+            + boreratio + horsepower
+            + highwaympg,data = Car.price)
+vif(fit3_u4)
+
+plot(rstandard(fit3_u4)) #not important.just for checking!
+```
+
+```{r}
+
+# In case of having interaction, the following analysis will be affected. But the process will be the same.
+
+resi<-resid(fit3_u4)
+summary(fit3_u4)
+```
+\section{Model selection}
+Forward Stepwise:
+
+```{r}
+forwstep.aic <- step(fit0, scope =list(upper=fit3_u4), data=Car.price, direction="both",
+                     k = 2, trace = 0)
+summary(forwstep.aic) 
+```
+Backward Selection:
+
+```{r}
+backsel.aic <- step(fit3_u4, data=Car.price, direction="backward",
+                    k = 2, trace = 0)
+summary(backsel.aic)
+Anova(forwstep.aic)
+
+#Second: model selected by backward selection
+summary(backsel.aic)
+
+Anova(backsel.aic)
+compareCoefs(forwstep.aic,backsel.aic)
+#Seems like forward and backward give the same mode.
+
+```
+\section{Investigating predictive performance via PRESS}
+
+```{r}
+MSPE.for<-sqrt(PRESS(forwstep.aic)/nrow(Car.price))
+MSPE.for
+MSPE.back<-sqrt(PRESS(backsel.aic)/nrow(Car.price))
+MSPE.back
+#Check with MSE
+MSE<-(summary(fit3_u4)$sigma)
+MSE
+```
+\section{Best subsets regression}
+
+```{r}
+#try with best subsets regression
+
+best.subs<-regsubsets(lg_price~symboling + fueltype + aspiration+ carbody
+                      + drivewheel+ enginelocation  + carlength + carwidth
+                      + enginesize
+                      + boreratio + horsepower
+                      + highwaympg,data = Car.price,nvmax=30)
+
+plot(best.subs,scale="bic")
+plot(best.subs,scale="Cp")
+plot(best.subs,scale="adjr2")
+sumbest.subs<-summary(best.subs)
+str(sumbest.subs)
+sumbest.subs$which[which.min(sumbest.subs$bic),]
+which.max(sumbest.subs$adjr2)
+max((sumbest.subs$adjr2))
+coefficients(forwstep.aic)
+```
+\section{Diagnosis}
+
+```{r}
+plot(lg_price,fitted(backsel.aic))
+abline(lm(fitted(backsel.aic)~lg_price))
+#Seems very good fit!
+#Normality
+stresid<-rstandard(forwstep.aic)
+qqPlot(stresid)
+#Slight deviation at upper tail, but may be acceptable.
+```
+\section{Checking for influential points and potential outliers}
+```{r}
+#Identification of outliers and distribution of residuals
+stresid<-rstandard(forwstep.aic)
+plot(stresid)
+hist(stresid,freq=FALSE,main="Distribution of studentized residuals")
+xfit<-seq(min(stresid),max(stresid),length=46)
+yfit<-dnorm(xfit)
+lines(xfit,yfit)
+#search for influential points
+cutoff<-qf(0.5,length(forwstep.aic$coefficients),
+           nrow(Car.price)-length(forwstep.aic$coefficients))
+cutoff
+plot(cooks.distance(forwstep.aic))
+sum(cooks.distance(forwstep.aic)>cutoff)
+plot(forwstep.aic,which= 4,cook.levels = cutoff)
+
+# search for high leverage points
+hatval<-hatvalues(forwstep.aic)
+#print(hatval,digits=4)
+hatval[which.max(hatval)]
+#less than 0.5. so no points with leverage greater than 0.5
+```
+\section{Cross validation and model selection}
+
+```{r}
+#Cross validation and model selection
+K <- 2
+set.seed(123)
+fold.ids <- sample(1:K,nrow(Car.price), replace = TRUE)
+cv.mspr <- numeric(K)
+for (k in 1:K)
+{
+# split into train/validation
+valid.idx <-which(fold.ids == k)
+Car.price.tr  <- Car.price[-valid.idx,]
+Car.price.val <- Car.price[valid.idx,]
+# full model
+fit1b.tr <-fit3
+# stepwise selection
+backsel.aic.b.tr <-step(fit1b.tr, data=Car.price.tr, direction="backward",
+                        k = 2, trace = 0)
+# get predictions
+val.preds <-predict(backsel.aic.b.tr, newdata = Car.price.val)
+cv.mspr[k] <-mean((log(Car.price.val$price) - val.preds) ^ 2)
+}
+mean(cv.mspr)
+sqrt(mean(cv.mspr))
+```
+This number is close to the previous MSPR.
+
+\section{The LASSO for model selection}
+```{r}
+library(glmnet)
+x <-model.matrix(lg_price ~ -1 + enginesize + highwaympg + carwidth +
+                enginelocation + drivewheel + carbody + horsepower
+                + fueltype + carlength + boreratio, data = Car.price)
+y <- lg_price
+fit.last <-glmnet(y = y, x = x)
+plot(fit.last, xvar = "lam", lwd = 2)
+```
+ 
+Based on this graph, by increasing the value of log lambda, we will have less variables in the model.
+So, let's see what is the best value of lambda!
+
+
+
+```{r}
+# Using K-fold cross validation to select lambda:
+fit.lcv <-cv.glmnet(y = y, x = x, nfolds = 10, type.measure = "mse")
+plot(fit.lcv)
+best_lambda <- fit.lcv$lambda.min
+best_lambda
+coef(fit.lcv, s = best_lambda)
+```
+The best lambda value is 0.00029.
+
+```{r}
+sqrt(min(fit.lcv$cvm))
+```
+Very close to the previous MSPE.
+
+\section{The Ridge for model selection}
+
+```{r}
+lambdas=seq(0,100,1)
+fit.ridge=lm.ridge(fit3, lambda=lambdas)
+plot(lambdas,fit.ridge$GCV,type='l')
+```
+
+```{r}
+which(fit.ridge$GCV==min(fit.ridge$GCV))
+```
+The best lambda value is 2 or 3.
+
+\section{Conclusion}
+Based on all analysis, it can be concluded that the suggested model from backward selection and forward stepwise is the best model. Also, we used several method of model selection and each of them approved that our model has a good predictivity index, based on the MSPE value.
+
+Final model to predict price car:
+(lg_price ~ fueltype + carbody + drivewheel + enginelocation +
+    carlength + carwidth + enginesize + boreratio + horsepower +
+    highwaympg)
+
+
+
+
+
+
+
